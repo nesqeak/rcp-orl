@@ -1,0 +1,6 @@
+{
+  "name": "Radiothérapie ORL de poche",
+  "description": "Application mobile d'aide aux décisions RCP et guide de recommandations de contourage en radiothérapie ORL.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
