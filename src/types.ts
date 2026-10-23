@@ -1,3 +1,5 @@
+export type View = 'home' | 'rcp_form' | 'rcp_result' | 'contouring' | 'decision_tree';
+
 export type SituationType = 'tumeur_en_place' | 'adjuvant';
 
 export type LocalisationENT =
@@ -97,18 +99,6 @@ export interface SavedCase {
   patientRef?: string;
   formData: RcpFormData;
   result: RcpResultOutput;
-}
-
-export interface ContouringGuideline {
-  localisation: LocalisationENT;
-  title: string;
-  description: string;
-  gtvDefinition: string;
-  ctvHighRisk: string;
-  ctvLowRisk: string;
-  nodalLevelsN0: string;
-  nodalLevelsNPlus: string;
-  pitfallsAndNotes: string[];
 }
 
 export interface OarConstraint {

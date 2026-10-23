@@ -6,12 +6,6 @@ export interface SubstructureOption {
   recoradBrInclusions: string[];
 }
 
-export interface NodalAreaOption {
-  id: string;
-  label: string;
-  shortName: string;
-}
-
 export interface BaseNodalLevel {
   id: string;
   shortName: string;
@@ -32,19 +26,6 @@ export const BASE_NODAL_LEVELS: BaseNodalLevel[] = [
   { id: 'RP', shortName: 'RP', label: 'Rétro-pharyngés (RP)' },
   { id: 'Parotidiens', shortName: 'Parotidiens', label: 'Parotidiens' },
 ];
-
-export const NODAL_AREAS_LIST: NodalAreaOption[] = BASE_NODAL_LEVELS.flatMap((level) => [
-  {
-    id: `${level.id} Droit`,
-    shortName: `${level.shortName} D`,
-    label: `${level.label} (Droit)`,
-  },
-  {
-    id: `${level.id} Gauche`,
-    shortName: `${level.shortName} G`,
-    label: `${level.label} (Gauche)`,
-  },
-]);
 
 export const SUBSTRUCTURES_MAP: Record<LocalisationENT, SubstructureOption[]> = {
   'Sinus de la face (hors ethmoïde)': [
