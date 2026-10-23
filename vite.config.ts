@@ -6,6 +6,8 @@ import { defineConfig } from 'vite';
 const disableHmr = process.env.DISABLE_HMR === 'true';
 
 export default defineConfig({
+  // Chemin public du site (ex. /rcp-orl/ sur GitHub Pages), défini par le workflow de déploiement.
+  base: process.env.BASE_PATH ?? '/',
   plugins: [react(), tailwindcss()],
   server: {
     hmr: !disableHmr,
