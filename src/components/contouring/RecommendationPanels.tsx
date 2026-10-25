@@ -295,7 +295,7 @@ interface ViewerLinkProps {
 /** Lien vers la visionneuse scanner, avec les volumes composites du cas quand il est renseigné. */
 export const ViewerLink: React.FC<ViewerLinkProps> = ({ url, volumes, side }) => {
   const composites = volumes && [
-    volumes.ctvPBr.length > 0 && `CTV_P_BR (${volumes.ctvPBr.length} sous-CTV)`,
+    volumes.ctvTBr.length > 0 && `CTV_T_BR (${volumes.ctvTBr.length} sous-CTV)`,
     volumes.ctvNBr.length > 0 && `CTV_N_BR (${volumes.ctvNBr.length} niveaux)`,
   ].filter(Boolean);
 
@@ -306,7 +306,7 @@ export const ViewerLink: React.FC<ViewerLinkProps> = ({ url, volumes, side }) =>
     description = `Volumes composites du cas, côté ${side.toLowerCase()} : ${composites.join(' et ')}.`;
   } else {
     description =
-      'Aucun volume bas risque de ce cas n’a d’équivalent dans la visionneuse : elle affichera l’atlas complet.';
+      'Pas de volume bas risque à afficher pour ce cas : la visionneuse affichera l’atlas complet.';
   }
 
   return (

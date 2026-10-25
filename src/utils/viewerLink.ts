@@ -16,8 +16,8 @@ const opposite = (side: Cote): Cote => (side === 'Droit' ? 'Gauche' : 'Droit');
 const sided = (id: string, side: Cote) => (VIEWER_MEDIAN_STRUCTURES.has(id) ? id : id + SUFFIX[side]);
 
 export interface ViewerVolumes {
-  /** Sous-CTV du CTV T bas risque (CTV_P_BR). */
-  ctvPBr: string[];
+  /** Sous-CTV du CTV T bas risque (CTV_T_BR). */
+  ctvTBr: string[];
   /** Sous-CTV du CTV N bas risque (CTV_N_BR). */
   ctvNBr: string[];
   /** Niveaux recommandés absents de la visionneuse (hors champ). */
@@ -30,7 +30,7 @@ export function computeViewerVolumes(
   recs: ContouringEvaluationResult,
   side: Cote
 ): ViewerVolumes {
-  const ctvPBr = new Set<string>();
+  const ctvTBr = new Set<string>();
   if (recs.ctvTLowRisk && !recs.isStereoPostOp) {
     const refs = [
       ...(formData.localisation === 'Nasopharynx' ? NASOPHARYNX_T_BR_VIEWER_STRUCTURES : []),
@@ -39,8 +39,8 @@ export function computeViewerVolumes(
     // Atteinte de la ligne médiane : inclusions des deux côtés
     const bothSides = formData.atteinteLigneMediane ?? false;
     for (const ref of refs) {
-      ctvPBr.add(sided(ref.id, side));
-      if (ref.bilateral || bothSides) ctvPBr.add(sided(ref.id, opposite(side)));
+      ctvTBr.add(sided(ref.id, side));
+      if (ref.bilateral || bothSides) ctvTBr.add(sided(ref.id, opposite(side)));
     }
   }
 
@@ -56,16 +56,16 @@ export function computeViewerVolumes(
   addLevels(recs.ctvNLowRiskLevels.ipsilateral, side);
   addLevels(recs.ctvNLowRiskLevels.contralateral, opposite(side));
 
-  return { ctvPBr: [...ctvPBr], ctvNBr: [...ctvNBr], missingLevels: [...missing] };
+  return { ctvTBr: [...ctvTBr], ctvNBr: [...ctvNBr], missingLevels: [...missing] };
 }
 
-/** Lien vers la visionneuse : atlas complet sans cas, volumes composites CTV_P_BR / CTV_N_BR sinon. */
+/** Lien vers la visionneuse : atlas complet sans cas, volumes composites CTV_T_BR / CTV_N_BR sinon. */
 export function buildViewerUrl(case_?: { formData: RcpFormData; side: Cote; volumes: ViewerVolumes }): string {
   if (!case_) return VIEWER_URL;
   const { formData, side, volumes } = case_;
   const params = new URLSearchParams();
   params.set('cas', `${formData.localisation} · ${formatStage(formData)} · côté ${side.toLowerCase()}`);
-  if (volumes.ctvPBr.length) params.set('ctv_p_br', volumes.ctvPBr.join(','));
+  if (volumes.ctvTBr.length) params.set('ctv_t_br', volumes.ctvTBr.join(','));
   if (volumes.ctvNBr.length) params.set('ctv_n_br', volumes.ctvNBr.join(','));
   return `${VIEWER_URL}?${params.toString()}`;
 }
