@@ -4,19 +4,21 @@ import { LocalisationENT, RcpFormData, RcpResultOutput, SituationType } from '..
 import { SUBSTRUCTURES_MAP } from '../../data/substructures';
 import { STEREO_POST_OP_PROPOSITION } from '../../data/options';
 import { computeContouringRecommendations } from '../../utils/contouringEngine';
+import { buildViewerUrl, computeViewerVolumes } from '../../utils/viewerLink';
 import { cx } from '../ui';
 import {
   currentStadeN,
   defaultCase,
   showsMedianLineChoice,
   toggleItem,
+  tumourSide,
   withLocalisation,
   withSituation,
 } from './caseState';
 import { CaseSummary } from './CaseSummary';
 import { CaseEditor } from './CaseEditor';
 import { NodalAreasChecklist, SubstructureChecklist } from './Checklists';
-import { NodalVolumesPanel, OarPanel, ReferencesList, TargetVolumesPanel } from './RecommendationPanels';
+import { NodalVolumesPanel, OarPanel, ReferencesList, TargetVolumesPanel, ViewerLink } from './RecommendationPanels';
 
 interface ContouringGuideProps {
   formData?: RcpFormData | null;
@@ -39,21 +41,32 @@ export const ContouringGuide: React.FC<ContouringGuideProps> = ({
     () => initialFormData?.situation === 'adjuvant' && isStereoRecommended
   );
   const [activeTab, setActiveTab] = useState<Tab>('volumes');
+  // Cas renseigné : venu d'un avis RCP, ou modifié par l'utilisateur dans le guide
+  const [isCaseFilled, setIsCaseFilled] = useState(!!initialFormData);
+
+  const updateCase = (update: (prev: RcpFormData) => RcpFormData) => {
+    setFormData(update);
+    setIsCaseFilled(true);
+  };
+  const updateSubstructures = (update: (prev: string[]) => string[]) => {
+    setSelectedSubstructures(update);
+    setIsCaseFilled(true);
+  };
 
   const handleSituationChange = (situation: SituationType) => {
-    setFormData((prev) => withSituation(prev, situation));
+    updateCase((prev) => withSituation(prev, situation));
     // La stéréotaxie post-opératoire ne concerne que la situation adjuvante
     setIsStereoPostOp(situation === 'adjuvant' && isStereoRecommended);
   };
 
   const handleLocalisationChange = (localisation: LocalisationENT) => {
-    setFormData((prev) => withLocalisation(prev, localisation));
+    updateCase((prev) => withLocalisation(prev, localisation));
     setSelectedSubstructures([]);
   };
 
   const availableSubstructures = SUBSTRUCTURES_MAP[formData.localisation] ?? [];
   const toggleAllSubstructures = () =>
-    setSelectedSubstructures((prev) =>
+    updateSubstructures((prev) =>
       prev.length === availableSubstructures.length ? [] : availableSubstructures.map((s) => s.id)
     );
 
@@ -61,6 +74,9 @@ export const ContouringGuide: React.FC<ContouringGuideProps> = ({
   const isNasopharynx = formData.localisation === 'Nasopharynx';
   const isAdjuvant = formData.situation === 'adjuvant';
   const showMedianLine = showsMedianLineChoice(formData.localisation, selectedSubstructures);
+  const side = tumourSide(formData);
+  const viewerVolumes = isCaseFilled ? computeViewerVolumes(formData, selectedSubstructures, recs, side) : null;
+  const viewerUrl = buildViewerUrl(viewerVolumes ? { formData, side, volumes: viewerVolumes } : undefined);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     {
@@ -111,7 +127,7 @@ export const ContouringGuide: React.FC<ContouringGuideProps> = ({
         {isEditingSituation && (
           <CaseEditor
             formData={formData}
-            onChange={setFormData}
+            onChange={updateCase}
             onSituationChange={handleSituationChange}
             onLocalisationChange={handleLocalisationChange}
             showMedianLine={showMedianLine}
@@ -143,7 +159,10 @@ export const ContouringGuide: React.FC<ContouringGuideProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => setIsStereoPostOp((prev) => !prev)}
+            onClick={() => {
+              setIsStereoPostOp((prev) => !prev);
+              setIsCaseFilled(true);
+            }}
             aria-pressed={isStereoPostOp}
             className={cx(
               'px-3 py-1 rounded-lg text-xs font-bold transition',
@@ -160,7 +179,7 @@ export const ContouringGuide: React.FC<ContouringGuideProps> = ({
       <SubstructureChecklist
         substructures={availableSubstructures}
         selected={selectedSubstructures}
-        onToggle={(id) => setSelectedSubstructures((prev) => toggleItem(prev, id))}
+        onToggle={(id) => updateSubstructures((prev) => toggleItem(prev, id))}
         onToggleAll={toggleAllSubstructures}
         isNasopharynx={isNasopharynx}
       />
@@ -168,8 +187,8 @@ export const ContouringGuide: React.FC<ContouringGuideProps> = ({
       {currentStadeN(formData) !== '0' && (
         <NodalAreasChecklist
           selected={formData.nodalAreas ?? []}
-          onToggle={(id) => setFormData((prev) => ({ ...prev, nodalAreas: toggleItem(prev.nodalAreas ?? [], id) }))}
-          onClear={() => setFormData((prev) => ({ ...prev, nodalAreas: [] }))}
+          onToggle={(id) => updateCase((prev) => ({ ...prev, nodalAreas: toggleItem(prev.nodalAreas ?? [], id) }))}
+          onClear={() => updateCase((prev) => ({ ...prev, nodalAreas: [] }))}
         />
       )}
 
@@ -197,6 +216,7 @@ export const ContouringGuide: React.FC<ContouringGuideProps> = ({
       {activeTab === 'oar' && <OarPanel />}
 
       <ReferencesList articles={recs.articlesToDisplay} />
+      <ViewerLink url={viewerUrl} volumes={viewerVolumes} side={side} />
     </div>
   );
 };

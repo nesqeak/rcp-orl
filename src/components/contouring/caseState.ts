@@ -1,4 +1,5 @@
 import {
+  Cote,
   LocalisationENT,
   RcpFormAdjuvant,
   RcpFormData,
@@ -13,6 +14,11 @@ import { getAvailableStadesN, getAvailableStadesT, pickAvailableStade } from '..
  * Le statut HPV n'est pris en compte que pour l'oropharynx.
  */
 
+/** Côté retenu tant que l'utilisateur ne l'a pas précisé. */
+export const DEFAULT_SIDE: Cote = 'Droit';
+
+export const tumourSide = (data: RcpFormData): Cote => data.coteTumeur ?? DEFAULT_SIDE;
+
 export function defaultCase(): RcpFormData {
   return {
     situation: 'tumeur_en_place',
@@ -25,6 +31,7 @@ export function defaultCase(): RcpFormData {
     chimiotherapieInduction: false,
     atteinteLigneMediane: false,
     nodalAreas: [],
+    coteTumeur: DEFAULT_SIDE,
   };
 }
 
@@ -53,6 +60,7 @@ export function withSituation(prev: RcpFormData, situation: SituationType): RcpF
     histologie: prev.histologie,
     cisplatineEligible: prev.cisplatineEligible,
     atteinteLigneMediane: prev.atteinteLigneMediane ?? false,
+    coteTumeur: prev.coteTumeur,
   };
 
   if (situation === 'tumeur_en_place') {

@@ -2,6 +2,7 @@ import React from 'react';
 import { RcpFormData } from '../../types';
 import { formatStage } from '../../utils/format';
 import { cx } from '../ui';
+import { tumourSide } from './caseState';
 
 const NEUTRAL = 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300';
 const ALERT = 'bg-rose-100 text-rose-800 font-bold';
@@ -24,6 +25,8 @@ export const CaseSummary: React.FC<CaseSummaryProps> = ({ formData, showMedianLi
   return (
     <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
       <Pill>{formData.situation === 'tumeur_en_place' ? `Stade ${formatStage(formData)}` : formatStage(formData)}</Pill>
+
+      <Pill>Côté: {tumourSide(formData)}</Pill>
 
       {isOropharynx && (
         <Pill className={cx('font-bold', formData.statutHPV ? TEAL : NEUTRAL)}>
