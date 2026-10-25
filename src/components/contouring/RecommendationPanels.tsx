@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { BookOpen, CheckCircle2, ExternalLink, Search } from 'lucide-react';
+import { BookOpen, CheckCircle2, ExternalLink, ScanLine, Search } from 'lucide-react';
 import { ContouringEvaluationResult } from '../../utils/contouringEngine';
 import { ArticleReference } from '../../data/references';
 import { OAR_CONSTRAINTS } from '../../data/oarConstraints';
+import { Cote } from '../../types';
+import { ViewerVolumes } from '../../utils/viewerLink';
 import { cx } from '../ui';
 
 /** Classes Tailwind complètes par niveau de risque (les noms dynamiques ne sont pas détectés par Tailwind). */
@@ -282,3 +284,55 @@ export const ReferencesList: React.FC<{ articles: ArticleReference[] }> = ({ art
     </div>
   </div>
 );
+
+interface ViewerLinkProps {
+  url: string;
+  /** null : aucun cas renseigné, la visionneuse affiche l'atlas complet. */
+  volumes: ViewerVolumes | null;
+  side: Cote;
+}
+
+/** Lien vers la visionneuse scanner, avec les volumes composites du cas quand il est renseigné. */
+export const ViewerLink: React.FC<ViewerLinkProps> = ({ url, volumes, side }) => {
+  const composites = volumes && [
+    volumes.ctvPBr.length > 0 && `CTV_P_BR (${volumes.ctvPBr.length} sous-CTV)`,
+    volumes.ctvNBr.length > 0 && `CTV_N_BR (${volumes.ctvNBr.length} niveaux)`,
+  ].filter(Boolean);
+
+  let description: string;
+  if (!volumes) {
+    description = 'Atlas complet des CTV tumoraux (Lapeyre 2005) et ganglionnaires (Grégoire 2014), des deux côtés.';
+  } else if (composites && composites.length > 0) {
+    description = `Volumes composites du cas, côté ${side.toLowerCase()} : ${composites.join(' et ')}.`;
+  } else {
+    description =
+      'Aucun volume bas risque de ce cas n’a d’équivalent dans la visionneuse : elle affichera l’atlas complet.';
+  }
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-2xs space-y-3">
+      <div className="flex items-center gap-2">
+        <ScanLine className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+        <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+          Visionneuse scanner
+        </h3>
+      </div>
+      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{description}</p>
+      {volumes && volumes.missingLevels.length > 0 && (
+        <p className="text-[11px] text-amber-700 dark:text-amber-400">
+          Hors champ du scanner (arrêt au cricoïde) : niveau{volumes.missingLevels.length > 1 ? 'x' : ''}{' '}
+          {volumes.missingLevels.join(', ')}.
+        </p>
+      )}
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition active:scale-[0.98]"
+      >
+        <span>Ouvrir la visionneuse scanner</span>
+        <ExternalLink className="w-3.5 h-3.5" />
+      </a>
+    </div>
+  );
+};

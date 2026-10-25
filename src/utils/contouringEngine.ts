@@ -2,6 +2,15 @@ import { LocalisationENT, RcpFormData, StadeN, StadeT } from '../types';
 import { SUBSTRUCTURES_MAP } from '../data/substructures';
 import { ARTICLES, ArticleReference } from '../data/references';
 
+/** Niveaux ganglionnaires (Grégoire 2014) utilisés dans les volumes prophylactiques. */
+export type NodalLevel = 'Ia' | 'Ib' | 'II' | 'III' | 'IV' | 'V' | 'VIa' | 'VIb' | 'RP';
+
+/** Niveaux du CTV N bas risque, du côté de la tumeur et du côté opposé. */
+export interface NodalLevelsBySide {
+  ipsilateral: NodalLevel[];
+  contralateral: NodalLevel[];
+}
+
 export interface ContouringEvaluationResult {
   isStereoPostOp: boolean;
   isLarynxEarlyStageSingleDose: boolean;
@@ -12,6 +21,7 @@ export interface ContouringEvaluationResult {
   ctvNHighRisk: string;
   ctvNInterRisk: string | null;
   ctvNLowRisk: string;
+  ctvNLowRiskLevels: NodalLevelsBySide;
   isUnilateralIndication: boolean;
   unilateralReason?: string;
   recoradInclusions: string[];
@@ -49,6 +59,20 @@ const LARYNX_SINGLE_DOSE_LABELS: Partial<Record<StadeT, string>> = {
 const TONSIL_SUBSTRUCTURES = ['amygdale', 'pilier_anterieur', 'pilier_posterieur', 'sillon_amygdaloglosse'];
 
 const isEarlyT = (t: StadeT) => t === 'Tis' || t === '1' || t === '2';
+
+const NO_LEVELS: NodalLevelsBySide = { ipsilateral: [], contralateral: [] };
+const ipsi = (...levels: NodalLevel[]): NodalLevelsBySide => ({ ipsilateral: levels, contralateral: [] });
+const bilat = (...levels: NodalLevel[]): NodalLevelsBySide => ({ ipsilateral: levels, contralateral: levels });
+/** Ajoute les ganglions rétropharyngés aux côtés déjà irradiés. */
+const plus = (levels: NodalLevelsBySide, extra: NodalLevel[]): NodalLevelsBySide => ({
+  ipsilateral: [...levels.ipsilateral, ...extra],
+  contralateral: levels.contralateral.length ? [...levels.contralateral, ...extra] : [],
+});
+
+interface LowRisk {
+  text: string;
+  levels: NodalLevelsBySide;
+}
 
 export function computeContouringRecommendations(
   formData: RcpFormData,
@@ -236,7 +260,7 @@ function evaluateUnilateralIndication(ctx: ContouringContext): { isUnilateral: b
 // CTV N (volumes ganglionnaires HR, IR, BR)
 // ----------------------------------------------------
 
-type CtvN = Pick<ContouringEvaluationResult, 'ctvNHighRisk' | 'ctvNInterRisk' | 'ctvNLowRisk'>;
+type CtvN = Pick<ContouringEvaluationResult, 'ctvNHighRisk' | 'ctvNInterRisk' | 'ctvNLowRisk' | 'ctvNLowRiskLevels'>;
 
 function ctvN(ctx: ContouringContext, isUnilateral: boolean): CtvN {
   if (ctx.isStereoPostOp) {
@@ -244,6 +268,7 @@ function ctvN(ctx: ContouringContext, isUnilateral: boolean): CtvN {
       ctvNHighRisk: 'Non inclus en Stéréo Post-Op (sauf adénopathie R1 ciblée en CTV HR).',
       ctvNInterRisk: null,
       ctvNLowRisk: 'Irradiation ganglionnaire prophylactique non indiquée en Stéréo Post-Op.',
+      ctvNLowRiskLevels: NO_LEVELS,
     };
   }
   if (ctx.isNasopharynx) return ctvNNasopharynx(ctx);
@@ -259,6 +284,7 @@ function ctvNNasopharynx({ isN0, hasECE, nodalLabels }: ContouringContext): CtvN
       ctvNInterRisk: null,
       ctvNLowRisk:
         'Consensus International Nasopharynx 2024 (N0) : Niveaux IIa, IIb, III, Va, Vb bilatéraux + Ganglions Rétropharyngés (RP). (Pas de niveau IV ni de niveau Vc dans les volumes prophylactiques en N0. Niveau Ib seulement si extension aux fosses nasales antérieures ou à la cavité buccale).',
+      ctvNLowRiskLevels: bilat('II', 'III', 'V', 'RP'),
     };
   }
 
@@ -271,6 +297,7 @@ function ctvNNasopharynx({ isN0, hasECE, nodalLabels }: ContouringContext): CtvN
     ctvNLowRisk: `Consensus International Nasopharynx 2024 (N+) : Niveaux IIa, IIb, III, IV, V, VI bilatéraux + Ganglions Rétropharyngés (RP) ${
       nodalLabels ? `(Aires envahies ciblées : ${nodalLabels})` : ''
     } selon l’extension sous-claviculaire ou ganglionnaire massive.`,
+    ctvNLowRiskLevels: bilat('II', 'III', 'IV', 'V', 'VIa', 'VIb', 'RP'),
   };
 }
 
@@ -284,6 +311,7 @@ function ctvNSalivary({ isN0, hasPositiveMargins }: ContouringContext): CtvN {
     ctvNLowRisk: isN0
       ? 'Irradiation prophylactique ciblée des niveaux Ib, II et III ipsilatéraux (si haut grade T3-T4, engainement périneural ou histologie agressive).'
       : 'Irradiation des niveaux Ia, Ib, II, III, IV, Va, Vb ipsilatéraux (et RP/parotidien si atteinte parotidienne).',
+    ctvNLowRiskLevels: isN0 ? ipsi('Ib', 'II', 'III') : ipsi('Ia', 'Ib', 'II', 'III', 'IV', 'V'),
   };
 }
 
@@ -315,85 +343,130 @@ function ctvNStandard(ctx: ContouringContext, isUnilateral: boolean): CtvN {
       : `CTV N IR = Aire(s) ganglionnaire(s) envahie(s) : ${nodalListText}`;
   }
 
-  return {
-    ctvNHighRisk,
-    ctvNInterRisk,
-    ctvNLowRisk: isN0 ? ctvNLowRiskN0(ctx) : ctvNLowRiskNPlus(ctx, isUnilateral),
-  };
+  const lowRisk = isN0 ? ctvNLowRiskN0(ctx) : ctvNLowRiskNPlus(ctx, isUnilateral);
+  return { ctvNHighRisk, ctvNInterRisk, ctvNLowRisk: lowRisk.text, ctvNLowRiskLevels: lowRisk.levels };
 }
 
-function ctvNLowRiskN0({ loc, isAdjuvant, stadeT, medianLineReached, substructureIds }: ContouringContext): string {
+function ctvNLowRiskN0({ loc, isAdjuvant, stadeT, medianLineReached, substructureIds }: ContouringContext): LowRisk {
   const has = (id: string) => substructureIds.includes(id);
 
   switch (loc) {
     case 'Cavité buccale':
       return medianLineReached
-        ? 'Niveaux Ia, Ib, II, III BILATÉRAUX (en raison de l’atteinte de la ligne médiane).'
-        : 'IRRADIATION CERVICALE UNILATÉRALE : Niveaux Ia, Ib, II, III IPSILATÉRAUX (sans atteinte de la ligne médiane).';
+        ? {
+            text: 'Niveaux Ia, Ib, II, III BILATÉRAUX (en raison de l’atteinte de la ligne médiane).',
+            levels: bilat('Ia', 'Ib', 'II', 'III'),
+          }
+        : {
+            text: 'IRRADIATION CERVICALE UNILATÉRALE : Niveaux Ia, Ib, II, III IPSILATÉRAUX (sans atteinte de la ligne médiane).',
+            levels: ipsi('Ia', 'Ib', 'II', 'III'),
+          };
 
     case 'Oropharynx':
       if (medianLineReached || has('base_de_langue') || has('voile') || has('paroi_pharyngee_posterieure_oro')) {
         const withRP = has('paroi_pharyngee_posterieure_oro') || has('voile');
-        return `Niveaux II, III, IV BILATÉRAUX${withRP ? ' + Ganglions Rétropharyngés (RP).' : '.'}`;
+        return {
+          text: `Niveaux II, III, IV BILATÉRAUX${withRP ? ' + Ganglions Rétropharyngés (RP).' : '.'}`,
+          levels: plus(bilat('II', 'III', 'IV'), withRP ? ['RP'] : []),
+        };
       }
-      return 'IRRADIATION CERVICALE UNILATÉRALE : Niveaux II, III, IV IPSILATÉRAUX (sans atteinte de la ligne médiane).';
+      return {
+        text: 'IRRADIATION CERVICALE UNILATÉRALE : Niveaux II, III, IV IPSILATÉRAUX (sans atteinte de la ligne médiane).',
+        levels: ipsi('II', 'III', 'IV'),
+      };
 
     case 'Hypopharynx':
-      return 'Niveaux II, III, IV, Va, Vb BILATÉRAUX + Ganglions Rétropharyngés (RP).';
+      return {
+        text: 'Niveaux II, III, IV, Va, Vb BILATÉRAUX + Ganglions Rétropharyngés (RP).',
+        levels: bilat('II', 'III', 'IV', 'V', 'RP'),
+      };
 
-    case 'Larynx':
+    case 'Larynx': {
       if (!isAdjuvant && isEarlyT(stadeT)) {
-        return 'Pas de CTV N dans cette situation (Larynx Tis/T1/T2 N0 : pas d’irradiation ganglionnaire requise).';
+        return {
+          text: 'Pas de CTV N dans cette situation (Larynx Tis/T1/T2 N0 : pas d’irradiation ganglionnaire requise).',
+          levels: NO_LEVELS,
+        };
       }
       if (has('glotte_pure') && (stadeT === '1' || stadeT === '2')) {
-        return 'Pas d’irradiation ganglionnaire prophylactique (0 Gy) pour glotte T1-T2 N0.';
+        return { text: 'Pas d’irradiation ganglionnaire prophylactique (0 Gy) pour glotte T1-T2 N0.', levels: NO_LEVELS };
       }
-      return `Niveaux II, III, IV BILATÉRAUX${
-        has('sous_glottique') ? ' + Niveaux VIa, VIb (Prétrachéal / Paratrachéal).' : '.'
-      }`;
+      const withVI = has('sous_glottique');
+      return {
+        text: `Niveaux II, III, IV BILATÉRAUX${withVI ? ' + Niveaux VIa, VIb (Prétrachéal / Paratrachéal).' : '.'}`,
+        levels: plus(bilat('II', 'III', 'IV'), withVI ? ['VIa', 'VIb'] : []),
+      };
+    }
 
     case 'Sinus de la face (hors ethmoïde)':
     case 'Sinus ethmoïde':
     case 'Fosses nasales':
-      return 'Pas d’irradiation prophylactique ganglionnaire systématique en N0 sauf T3-T4 (Niveaux Ib et II ipsilatéraux).';
+      return {
+        text: 'Pas d’irradiation prophylactique ganglionnaire systématique en N0 sauf T3-T4 (Niveaux Ib et II ipsilatéraux).',
+        levels: stadeT === '3' || stadeT === '4' ? ipsi('Ib', 'II') : NO_LEVELS,
+      };
 
     default:
-      return 'Niveaux II, III, IV IPSILATÉRAUX.';
+      return { text: 'Niveaux II, III, IV IPSILATÉRAUX.', levels: ipsi('II', 'III', 'IV') };
   }
 }
 
 function ctvNLowRiskNPlus(
   { loc, stadeN, medianLineReached, substructureIds, nodalAreas }: ContouringContext,
   isUnilateral: boolean
-): string {
+): LowRisk {
   if (isUnilateral) {
     return loc === 'Cavité buccale'
-      ? 'IRRADIATION CERVICALE UNILATÉRALE : Niveaux Ia, Ib, II, III, IV, Va, Vb IPSILATÉRAUX (côté lésionnel uniquement).'
-      : 'IRRADIATION CERVICALE UNILATÉRALE : Niveaux II, III, IV, Va, Vb IPSILATÉRAUX (côté lésionnel uniquement).';
+      ? {
+          text: 'IRRADIATION CERVICALE UNILATÉRALE : Niveaux Ia, Ib, II, III, IV, Va, Vb IPSILATÉRAUX (côté lésionnel uniquement).',
+          levels: ipsi('Ia', 'Ib', 'II', 'III', 'IV', 'V'),
+        }
+      : {
+          text: 'IRRADIATION CERVICALE UNILATÉRALE : Niveaux II, III, IV, Va, Vb IPSILATÉRAUX (côté lésionnel uniquement).',
+          levels: ipsi('II', 'III', 'IV', 'V'),
+        };
   }
 
   switch (loc) {
     case 'Cavité buccale':
       return medianLineReached || stadeN === '2c' || stadeN === '3a' || stadeN === '3b'
-        ? 'Niveaux Ia, Ib, II, III, IV, Va, Vb BILATÉRAUX (incluant le niveau Ib controlatéral).'
-        : 'Niveaux Ia, Ib, II, III, IV, Va, Vb IPSILATÉRAUX + Niveaux Ia, Ib, II, III controlatéraux.';
+        ? {
+            text: 'Niveaux Ia, Ib, II, III, IV, Va, Vb BILATÉRAUX (incluant le niveau Ib controlatéral).',
+            levels: bilat('Ia', 'Ib', 'II', 'III', 'IV', 'V'),
+          }
+        : {
+            text: 'Niveaux Ia, Ib, II, III, IV, Va, Vb IPSILATÉRAUX + Niveaux Ia, Ib, II, III controlatéraux.',
+            levels: { ipsilateral: ['Ia', 'Ib', 'II', 'III', 'IV', 'V'], contralateral: ['Ia', 'Ib', 'II', 'III'] },
+          };
 
     case 'Oropharynx': {
       const withRP =
         nodalAreas.includes('RP') || substructureIds.includes('paroi_pharyngee_posterieure_oro') || stadeN === '3b';
-      return `Niveaux II, III, IV, Va, Vb BILATÉRAUX${withRP ? ' + Ganglions Rétropharyngés (RP).' : '.'}`;
+      return {
+        text: `Niveaux II, III, IV, Va, Vb BILATÉRAUX${withRP ? ' + Ganglions Rétropharyngés (RP).' : '.'}`,
+        levels: plus(bilat('II', 'III', 'IV', 'V'), withRP ? ['RP'] : []),
+      };
     }
 
     case 'Hypopharynx':
-      return 'Niveaux II, III, IV, Va, Vb, VIa, VIb BILATÉRAUX + Ganglions Rétropharyngés (RP).';
+      return {
+        text: 'Niveaux II, III, IV, Va, Vb, VIa, VIb BILATÉRAUX + Ganglions Rétropharyngés (RP).',
+        levels: bilat('II', 'III', 'IV', 'V', 'VIa', 'VIb', 'RP'),
+      };
 
-    case 'Larynx':
-      return `Niveaux II, III, IV, Va, Vb BILATÉRAUX${
-        substructureIds.includes('sous_glottique') ? ' + Niveaux VIa, VIb (Prétrachéal / Paratrachéal).' : '.'
-      }`;
+    case 'Larynx': {
+      const withVI = substructureIds.includes('sous_glottique');
+      return {
+        text: `Niveaux II, III, IV, Va, Vb BILATÉRAUX${withVI ? ' + Niveaux VIa, VIb (Prétrachéal / Paratrachéal).' : '.'}`,
+        levels: plus(bilat('II', 'III', 'IV', 'V'), withVI ? ['VIa', 'VIb'] : []),
+      };
+    }
 
     default:
-      return 'Niveaux Ia à Vb BILATÉRAUX selon l’extension N.';
+      return {
+        text: 'Niveaux Ia à Vb BILATÉRAUX selon l’extension N.',
+        levels: bilat('Ia', 'Ib', 'II', 'III', 'IV', 'V'),
+      };
   }
 }
 

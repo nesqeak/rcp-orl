@@ -32,6 +32,9 @@ export type MargesResection =
 
 export type EffractionCapsulaire = 'Non' | 'Mineure' | 'Majeure';
 
+/** Côté du patient. */
+export type Cote = 'Droit' | 'Gauche';
+
 export type NbGanglionsHpv = '1' | '2 et plus';
 export type TailleTumeurT2 = '< 3cm' | '≥ 3cm';
 
@@ -47,6 +50,7 @@ export interface RcpFormTumeurEnPlace {
   chimiotherapieInduction: boolean;
   atteinteLigneMediane?: boolean;
   nodalAreas?: string[];
+  coteTumeur?: Cote;
 }
 
 export interface RcpFormAdjuvant {
@@ -66,6 +70,7 @@ export interface RcpFormAdjuvant {
   lambeau: boolean;
   atteinteLigneMediane?: boolean;
   nodalAreas?: string[];
+  coteTumeur?: Cote;
 }
 
 export type RcpFormData = RcpFormTumeurEnPlace | RcpFormAdjuvant;

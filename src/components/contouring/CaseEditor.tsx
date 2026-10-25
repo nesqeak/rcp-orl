@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Cote,
   LocalisationENT,
   RcpFormAdjuvant,
   RcpFormData,
@@ -11,7 +12,7 @@ import { formatStadeN, formatStadeT } from '../../utils/format';
 import { CONTOURING_LOCALISATIONS, HISTOLOGIES, MARGES_OPTIONS } from '../../data/options';
 import { ChoiceGrid, FieldRow, cx, SegmentedControl, Select, ToggleRow, yesNoOptions } from '../ui';
 import { EceChoice, HPV_OPTIONS, NbGanglionsChoice, TailleTumeurChoice } from '../clinicalFields';
-import { currentStadeN, withHPV, withStadeN } from './caseState';
+import { currentStadeN, tumourSide, withHPV, withStadeN } from './caseState';
 
 type CasePatch = Partial<RcpFormTumeurEnPlace> | Partial<RcpFormAdjuvant>;
 
@@ -30,6 +31,11 @@ const SMALL_SELECT = 'text-sm font-semibold p-1.5 rounded-lg bg-white dark:bg-sl
 const SITUATION_OPTIONS: { value: SituationType; label: string }[] = [
   { value: 'tumeur_en_place', label: 'Tumeur en place' },
   { value: 'adjuvant', label: 'Adjuvant (Post-op)' },
+];
+
+const SIDE_OPTIONS: { value: Cote; label: string; activeClass: string }[] = [
+  { value: 'Droit', label: 'Droit', activeClass: INDIGO_ACTIVE },
+  { value: 'Gauche', label: 'Gauche', activeClass: INDIGO_ACTIVE },
 ];
 
 const SubLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -76,6 +82,18 @@ export const CaseEditor: React.FC<CaseEditorProps> = ({
           onChange={onLocalisationChange}
           className="text-xs font-semibold p-2 bg-white dark:bg-slate-800"
         />
+        <FieldRow
+          className="mt-2 p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700"
+          title="Côté de la tumeur :"
+          hint="Détermine le côté des volumes dans la visionneuse"
+        >
+          <SegmentedControl
+            compact
+            value={tumourSide(formData)}
+            options={SIDE_OPTIONS}
+            onChange={(coteTumeur) => patch({ coteTumeur })}
+          />
+        </FieldRow>
       </div>
 
       <div className="space-y-2">
