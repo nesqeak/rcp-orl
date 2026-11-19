@@ -87,7 +87,6 @@ export type DoseProposition =
   | 'Radiothérapie 70Gy potentialisée par du cisplatine 100mg/m2'
   | 'Radiothérapie 70Gy potentialisée par du cisplatine 100mg/m2 toutes les 3 semaines ou 40mg/m2 hebdomadaire'
   | 'Chimiothérapie d’induction GP (ou TPF) puis radiothérapie 70Gy potentialisée par du cisplatine'
-  | 'Radiothérapie 70Gy potentialisée par un sel de platine alternatif (carboplatine, nédaplatine ou lobaplatine)'
   | 'Radiothérapie 70Gy potentialisée par du cisplatine 40mg/m2'
   | 'Radiothérapie 70Gy potentialisée par du cisplatine 40mg/m2 ou Radiothérapie 70Gy si réponse > 80%'
   | 'Radiothérapie 70Gy potentialisée par du cetuximab'
