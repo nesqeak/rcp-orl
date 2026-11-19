@@ -1,4 +1,4 @@
-import { LocalisationENT, RcpFormData, StadeN, StadeT } from '../types';
+import { Cote, LocalisationENT, RcpFormData, StadeN, StadeT } from '../types';
 import { SUBSTRUCTURES_MAP } from '../data/substructures';
 import { ARTICLES, ArticleReference } from '../data/references';
 
@@ -34,6 +34,8 @@ interface ContouringContext {
   isAdjuvant: boolean;
   isStereoPostOp: boolean;
   isNasopharynx: boolean;
+  /** Nasopharynx UCNT en place : recommandations CSCO-ASCO 2026. */
+  isUcntNasopharynx: boolean;
   isSalivaryAdjuvant: boolean;
   isLarynxEarlyStage: boolean;
   hasFlap: boolean;
@@ -48,6 +50,7 @@ interface ContouringContext {
   nodalLabels: string | null;
   substructureIds: string[];
   recoradInclusions: string[];
+  tumourSide: Cote;
 }
 
 const LARYNX_SINGLE_DOSE_LABELS: Partial<Record<StadeT, string>> = {
@@ -122,6 +125,7 @@ function buildContext(
     isAdjuvant,
     isStereoPostOp,
     isNasopharynx: loc === 'Nasopharynx',
+    isUcntNasopharynx: !isAdjuvant && loc === 'Nasopharynx' && formData.histologie === 'UCNT',
     isSalivaryAdjuvant: loc === 'Glande salivaire' && isAdjuvant,
     // Larynx Tis / T1 / T2 N0 en place : niveau de dose unique et CTV T unique (pas de CTV N)
     isLarynxEarlyStage: !isAdjuvant && loc === 'Larynx' && isEarlyT(stadeT) && stadeN === '0',
@@ -137,6 +141,7 @@ function buildContext(
     nodalLabels: nodalAreas.length > 0 ? nodalAreas.join(', ') : null,
     substructureIds,
     recoradInclusions,
+    tumourSide: formData.coteTumeur ?? 'Droit',
   };
 }
 
@@ -154,6 +159,11 @@ function ctvTHighRisk(ctx: ContouringContext): string {
       : 'Stéréo Post-Op (Sans Lambeau) : Zone de résection (zone R1 si marges positives, zone de résection simple sinon) + 5 mm.';
   }
   if (!ctx.isAdjuvant) {
+    if (ctx.isUcntNasopharynx) {
+      return ctx.hasInduction
+        ? 'GTV T résiduel post-induction, délimité sur l’IRM post-induction fusionnée au scanner de simulation, + 0 mm : 70 Gy. L’atteinte osseuse de la base du crâne et l’extension intracrânienne restent contourées selon l’imagerie pré-induction.'
+        : 'GTV T + 0 mm, délimité sur IRM fusionnée au scanner de simulation (obligatoire sauf contre-indication à l’IRM, notamment pour l’extension à la base du crâne, l’atteinte des nerfs crâniens et l’extension intracrânienne) : 70 Gy en 33–35 fractions.';
+    }
     if (ctx.isNasopharynx) {
       return ctx.hasInduction
         ? 'GTV résiduel + 0 mm étendu au GTV initial au niveau osseux et de la base du crâne.'
@@ -173,6 +183,9 @@ function ctvTInterRisk(ctx: ContouringContext): string | null {
   // Niveau de dose unique (larynx débutant) ou CTV HR seul (stéréo post-op)
   if (ctx.isLarynxEarlyStage || ctx.isStereoPostOp) return null;
 
+  if (ctx.isUcntNasopharynx && ctx.hasInduction) {
+    return 'Nasopharynx (Consensus 2024, CSCO-ASCO 2026) : CTV T IR = CTV T HR + 5 mm, étendu à toute l’extension tumorale pré-induction (IRM pré-induction fusionnée au scanner de simulation) : au moins 60 Gy.';
+  }
   if (ctx.isNasopharynx) {
     return ctx.hasInduction
       ? 'Nasopharynx (Consensus 2024) : CTV T IR = CTV T HR + 5 mm étendu au GTV pré-chimiothérapie d’induction.'
@@ -271,6 +284,7 @@ function ctvN(ctx: ContouringContext, isUnilateral: boolean): CtvN {
       ctvNLowRiskLevels: NO_LEVELS,
     };
   }
+  if (ctx.isUcntNasopharynx) return ctvNNasopharynxUcnt(ctx);
   if (ctx.isNasopharynx) return ctvNNasopharynx(ctx);
   if (ctx.isSalivaryAdjuvant) return ctvNSalivary(ctx);
   return ctvNStandard(ctx, isUnilateral);
@@ -298,6 +312,60 @@ function ctvNNasopharynx({ isN0, hasECE, nodalLabels }: ContouringContext): CtvN
       nodalLabels ? `(Aires envahies ciblées : ${nodalLabels})` : ''
     } selon l’extension sous-claviculaire ou ganglionnaire massive.`,
     ctvNLowRiskLevels: bilat('II', 'III', 'IV', 'V', 'VIa', 'VIb', 'RP'),
+  };
+}
+
+const opposite = (side: Cote): Cote => (side === 'Droit' ? 'Gauche' : 'Droit');
+
+const NPC_DEESCALATION =
+  'Rétropharyngés médiaux omis en l’absence d’atteinte rétropharyngée médiale. Niveau Ib omis sauf atteinte du niveau Ib ou de la glande sous-mandibulaire, ou extension à la moitié antérieure des fosses nasales.';
+
+/**
+ * Nasopharynx UCNT : CSCO-ASCO 2026. Cou supérieur seul (II, III, Va) du côté non atteint,
+ * cou entier (II, III, IV, Va, Vb) du côté atteint, rétropharyngés latéraux des deux côtés.
+ */
+function ctvNNasopharynxUcnt({ isN0, hasECE, hasInduction, nodalAreas, nodalLabels, tumourSide }: ContouringContext): CtvN {
+  if (isN0) {
+    return {
+      ctvNHighRisk: 'Pas de GTVn / CTVn HR ganglionnaire (N0).',
+      ctvNInterRisk: null,
+      ctvNLowRisk: `CSCO-ASCO 2026 (N0) : cou supérieur bilatéral uniquement, niveaux II, III et Va + ganglions rétropharyngés latéraux ; cou inférieur (IV, Vb) omis. ${NPC_DEESCALATION}`,
+      ctvNLowRiskLevels: bilat('II', 'III', 'V', 'RP'),
+    };
+  }
+
+  // Côtés du cou atteints d'après les aires cervicales cochées (les rétropharyngés seuls ne comptent pas) ;
+  // à défaut, le côté de la tumeur
+  const cervicalAreas = nodalAreas.filter((a) => !a.startsWith('RP '));
+  const involved = new Set<Cote>(
+    cervicalAreas.flatMap((a) => (a.endsWith('Droit') ? ['Droit' as Cote] : a.endsWith('Gauche') ? ['Gauche' as Cote] : []))
+  );
+  const noAreaChecked = involved.size === 0;
+  if (noAreaChecked) involved.add(tumourSide);
+
+  const levelsFor = (side: Cote): NodalLevel[] => [
+    ...(nodalAreas.includes(`Ib ${side}`) ? (['Ib'] as NodalLevel[]) : []),
+    ...(involved.has(side) ? (['II', 'III', 'IV', 'V', 'RP'] as NodalLevel[]) : (['II', 'III', 'V', 'RP'] as NodalLevel[])),
+  ];
+  const describe = (side: Cote) => {
+    const ib = nodalAreas.includes(`Ib ${side}`) ? 'Ib, ' : '';
+    return involved.has(side)
+      ? `côté ${side.toLowerCase()} (atteint) : niveaux ${ib}II, III, IV, Va, Vb + rétropharyngés latéraux`
+      : `côté ${side.toLowerCase()} (non atteint) : cou supérieur uniquement, niveaux ${ib}II, III, Va + rétropharyngés latéraux ; cou inférieur (IV, Vb) omis`;
+  };
+  const nodalInfo = nodalLabels ? ` [Aires envahies : ${nodalLabels}]` : '';
+
+  return {
+    ctvNHighRisk: hasInduction
+      ? 'CTV N HR = GTV N délimité sur l’IRM post-induction ; intégrer l’imagerie pré-induction en cas d’adénopathie volumineuse, de rupture capsulaire étendue, de contact neurovasculaire ou de limites initiales incertaines.'
+      : 'CTV N HR = GTV N',
+    ctvNInterRisk: hasECE
+      ? `CTV N IR = CTV N HR + 5 mm (présence d’ENE / effraction extra-capsulaire).${nodalInfo}`
+      : `CTV N IR = CTV N HR + 5 mm si ENE uniquement.${nodalInfo}`,
+    ctvNLowRisk: `CSCO-ASCO 2026 (N+) : ${describe(tumourSide)} ; ${describe(opposite(tumourSide))}.${
+      noAreaChecked ? ' (Aucune aire ganglionnaire cervicale cochée : côté de la tumeur considéré comme atteint.)' : ''
+    } ${NPC_DEESCALATION}`,
+    ctvNLowRiskLevels: { ipsilateral: levelsFor(tumourSide), contralateral: levelsFor(opposite(tumourSide)) },
   };
 }
 
@@ -479,7 +547,7 @@ function selectArticles(ctx: ContouringContext): ArticleReference[] {
   if (ctx.isStereoPostOp) articles.push(ARTICLES.stereoPostOp);
   if (ctx.isSalivaryAdjuvant) articles.push(ARTICLES.salivaryGland);
   if (ctx.isNasopharynx) {
-    articles.push(ARTICLES.nasopharynx);
+    articles.push(ARTICLES.nasopharynx, ARTICLES.nasopharynxCscoAsco2026);
   } else {
     // RECORAD s'applique à tous les CTV T BR sauf le nasopharynx (Consensus International 2024)
     articles.push(ARTICLES.biauNodal, ARTICLES.recorad);

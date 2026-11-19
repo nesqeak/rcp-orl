@@ -35,6 +35,15 @@ export const ARTICLES = {
     summaryText:
       'Directives internationales 2024 pour le CTV-GTV0mm, l’extension anatomique osseuse aux trous de la base du crâne et les niveaux ganglionnaires rétropharyngés.',
   },
+  nasopharynxCscoAsco2026: {
+    id: 'csco_asco_npc_2026',
+    title: 'Treatment of Stage IB to III Nasopharyngeal Carcinoma: CSCO-ASCO Guideline Update',
+    authorsOrJournal: 'Chen YP et al. - Journal of Clinical Oncology (2026)',
+    url: 'https://ascopubs.org/doi/10.1200/JCO-26-02648',
+    badge: 'Nasopharynx CSCO-ASCO 2026',
+    summaryText:
+      'Recommandations 2026 (TNM 9e édition, stades IB à III) : IMRT 70 Gy, délimitation sur IRM fusionnée au scanner, volumes adaptés après chimiothérapie d’induction et désescalade ganglionnaire (cou inférieur du côté non atteint, rétropharyngés médiaux, niveau Ib).',
+  },
   biauNodal: {
     id: 'biau_nodal_2019',
     title:

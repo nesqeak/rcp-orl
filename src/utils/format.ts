@@ -1,4 +1,4 @@
-import { RcpFormData, SituationType, StadeN, StadeT } from '../types';
+import { AdnEbv, RcpFormData, SituationType, StadeN, StadeT } from '../types';
 
 export function formatStadeT(stade: StadeT, pathologic = false): string {
   const prefix = pathologic ? 'p' : '';
@@ -27,3 +27,5 @@ export function hpvLabel(statutHPV: boolean): string {
 }
 
 export const yesNo = (value: boolean): string => (value ? 'Oui' : 'Non');
+
+export const ADN_EBV_LABELS: Record<AdnEbv, string> = { bas: 'Bas', eleve: 'Élevé', non_disponible: 'Non disponible' };
