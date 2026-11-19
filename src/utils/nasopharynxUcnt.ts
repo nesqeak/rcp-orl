@@ -33,13 +33,10 @@ const ADN_EBV =
   'ADN EBV plasmatique à interpréter selon le test et le seuil validés localement : aucun seuil universel n’est recommandé.';
 const INDUCTION =
   'Induction : GP (gemcitabine 1000 mg/m² J1 et J8, cisplatine 80 mg/m² J1) ou TPF (docétaxel 60–75 mg/m² J1, cisplatine 60–75 mg/m² J1, 5-FU 600–750 mg/m²/j en continu J1-J5), toutes les 3 semaines, 3 cycles (2 au minimum). Si indisponibles ou contre-indiqués : TP, PF, LF ou PX.';
-const APRES_INDUCTION =
-  'Après induction : bilan d’imagerie dans les 14 jours suivant la dernière cure et radiochimiothérapie débutée dans les 28 jours suivant le 1er jour de la dernière cure ; le résidu tumoral post-induction reçoit 70 Gy et l’extension tumorale pré-induction au moins 60 Gy.';
 const SANS_INDUCTION =
   'Sans chimiothérapie d’induction : radiochimiothérapie concomitante puis chimiothérapie adjuvante (PF toutes les 4 semaines × 3, GP toutes les 3 semaines × 3, ou capécitabine).';
 const CAPECITABINE_METRONOMIQUE =
   'Capécitabine métronomique adjuvante 650 mg/m² deux fois par jour pendant 1 an à proposer après induction et radiochimiothérapie, en particulier en cas d’ADN EBV persistant ou de maladie résiduelle à l’imagerie.';
-const DPYD = 'Rechercher un déficit en DPD (génotypage DPYD) avant toute fluoropyrimidine (5-FU, capécitabine).';
 
 export function evaluateNasopharynxUcnt(data: RcpFormTumeurEnPlace): {
   proposition: DoseProposition;
@@ -111,28 +108,13 @@ export function evaluateNasopharynxUcnt(data: RcpFormTumeurEnPlace): {
     );
   }
 
-  // Stades II–III hors T3N0
+  // Stades II–III hors T3N0 : justification limitée aux schémas d'induction, à la chimiothérapie adjuvante
+  // et à la capécitabine métronomique (non indiquée pour les T3N1)
   const capecitabine = stadeT === '3' && stadeN === '1' ? [] : [CAPECITABINE_METRONOMIQUE];
-  if (chimiotherapieInduction) {
-    return decide(
-      RT_CISPLATINE,
-      `${intro} Après chimiothérapie d’induction : radiochimiothérapie concomitante.`,
-      DOSE,
-      APRES_INDUCTION,
-      CISPLATINE,
-      ...capecitabine,
-      ...(capecitabine.length ? [DPYD] : [])
-    );
-  }
   return decide(
-    INDUCTION_PUIS_RT_CISPLATINE,
-    `${intro} Stade II–III (hors T3N0) : chimiothérapie d’induction puis radiochimiothérapie concomitante.`,
+    chimiotherapieInduction ? RT_CISPLATINE : INDUCTION_PUIS_RT_CISPLATINE,
     INDUCTION,
-    DOSE,
-    APRES_INDUCTION,
-    CISPLATINE,
     SANS_INDUCTION,
-    ...capecitabine,
-    DPYD
+    ...capecitabine
   );
 }
