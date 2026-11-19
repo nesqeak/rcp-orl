@@ -79,7 +79,7 @@ export function evaluateNasopharynxUcnt(data: RcpFormTumeurEnPlace): {
     if (ebvBas && !isT2N1) {
       return decide(
         RT_SEULE,
-        `${intro} Stade IB à faible risque (ADN EBV plasmatique bas) : la chimiothérapie concomitante peut être omise (IMRT seule).`,
+        `${intro} Stade IB à faible risque (ADN EBV plasmatique bas) : la chimiothérapie concomitante peut être omise (RT 70 Gy seule).`,
         DOSE,
         ADN_EBV
       );

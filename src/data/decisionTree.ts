@@ -261,9 +261,9 @@ export const DECISION_TREE_NODES: TreeNode[] = [
     keyRules: [
       'Radiochimiothérapie concomitante : RT 70 Gy en 33–35 fractions + cisplatine 100 mg/m² toutes les 3 semaines ou 40 mg/m² hebdomadaire (cumul ≥ 200 mg/m²)',
       'Particulièrement indiquée pour les T2N1',
-      'Sous-groupe à faible risque (ADN EBV plasmatique bas et/ou atteinte ganglionnaire limitée, hors T2N1) ➔ IMRT seule possible',
+      'Sous-groupe à faible risque (ADN EBV plasmatique bas et/ou atteinte ganglionnaire limitée, hors T2N1) ➔ RT 70 Gy seule possible',
     ],
-    prescription: 'RT 70Gy + Cisplatine (ou IMRT seule si faible risque)',
+    prescription: 'RT 70Gy + Cisplatine (ou RT 70Gy seule si faible risque)',
     doseBadgeColor: 'bg-indigo-600 text-white font-bold',
     rationale:
       'Recommandations CSCO-ASCO 2026 : la chimiothérapie concomitante apporte le plus aux T2N1 et aux formes à facteurs défavorables ; un essai randomisé permet de l’omettre chez des patients sélectionnés à faible risque (ADN EBV bas, atteinte ganglionnaire limitée).',
