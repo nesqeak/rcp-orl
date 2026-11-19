@@ -24,15 +24,11 @@ const RT_CISPLATINE: DoseProposition =
   'Radiothérapie 70Gy potentialisée par du cisplatine 100mg/m2 toutes les 3 semaines ou 40mg/m2 hebdomadaire';
 const INDUCTION_PUIS_RT_CISPLATINE: DoseProposition =
   'Chimiothérapie d’induction GP (ou TPF) puis radiothérapie 70Gy potentialisée par du cisplatine';
-const RT_PLATINE_ALTERNATIF: DoseProposition =
-  'Radiothérapie 70Gy potentialisée par un sel de platine alternatif (carboplatine, nédaplatine ou lobaplatine)';
 
 const DOSE =
   'Radiothérapie IMRT avec guidage par l’image quotidien : 70 Gy en 33–35 fractions (2–2,12 Gy), 5 fractions par semaine sur 7 semaines ; 66–68 Gy envisageables pour une petite tumeur très répondeuse.';
 const CISPLATINE =
   'Cisplatine concomitant : 100 mg/m² toutes les 3 semaines (3 cures) ou 40 mg/m² hebdomadaire (7 cures), dose cumulée visée ≥ 200 mg/m².';
-const PLATINE_ALTERNATIF =
-  'Contre-indication au cisplatine : carboplatine AUC 2 hebdomadaire ou AUC 5 toutes les 3 semaines, lobaplatine 30 mg/m² ou nédaplatine 100 mg/m² toutes les 3 semaines. Contre-indication à tous les sels de platine : fluoropyrimidine concomitante (capécitabine, 5-FU ou tégafur) ou radiothérapie seule.';
 const ADN_EBV =
   'ADN EBV plasmatique à interpréter selon le test et le seuil validés localement : aucun seuil universel n’est recommandé.';
 const INDUCTION =
@@ -54,8 +50,6 @@ export function evaluateNasopharynxUcnt(data: RcpFormTumeurEnPlace): {
   const tn = `T${stadeT}N${stadeN}`;
   const intro = `Carcinome indifférencié du nasopharynx (UCNT) ${tn} : stade TNM9 ${stage} (recommandations CSCO-ASCO 2026).`;
   const ebvBas = adnEbv === 'bas';
-  const concomitant = cisplatineEligible ? RT_CISPLATINE : RT_PLATINE_ALTERNATIF;
-  const chimioConcomitante = cisplatineEligible ? CISPLATINE : PLATINE_ALTERNATIF;
   const decide = (proposition: DoseProposition, ...justification: string[]) => ({ proposition, justification });
 
   if (stage === 'IA') {
@@ -66,12 +60,17 @@ export function evaluateNasopharynxUcnt(data: RcpFormTumeurEnPlace): {
     );
   }
 
+  // Patient inéligible au cisplatine : radiothérapie seule, quel que soit le stade
+  if (!cisplatineEligible) {
+    return decide(RT_SEULE, `${intro} Patient inéligible au cisplatine : radiothérapie 70 Gy seule.`, DOSE);
+  }
+
   if (stage === 'indéterminé') {
     return decide(
-      concomitant,
+      RT_CISPLATINE,
       `${intro} Stade non déterminable sans le T : radiochimiothérapie concomitante par défaut, à discuter en RCP.`,
       DOSE,
-      chimioConcomitante
+      CISPLATINE
     );
   }
 
@@ -86,12 +85,12 @@ export function evaluateNasopharynxUcnt(data: RcpFormTumeurEnPlace): {
       );
     }
     return decide(
-      concomitant,
+      RT_CISPLATINE,
       isT2N1
         ? `${intro} Stade IB T2N1 : radiochimiothérapie concomitante recommandée.`
         : `${intro} Stade IB : radiochimiothérapie concomitante recommandée ; elle peut être omise dans un sous-groupe à faible risque (ADN EBV bas et/ou atteinte ganglionnaire limitée).`,
       DOSE,
-      chimioConcomitante
+      CISPLATINE
     );
   }
 
@@ -99,31 +98,21 @@ export function evaluateNasopharynxUcnt(data: RcpFormTumeurEnPlace): {
     if (ebvBas && volumeTumoralInf30cc) {
       return decide(
         RT_SEULE,
-        `${intro} T3N0 de petit volume (< 30 cc) avec ADN EBV plasmatique bas : IMRT seule envisageable.`,
+        `${intro} T3N0 de petit volume (< 30 cc) avec ADN EBV plasmatique bas : RT 70 Gy seule.`,
         DOSE,
         ADN_EBV
       );
     }
     return decide(
-      concomitant,
+      RT_CISPLATINE,
       `${intro} T3N0 : radiochimiothérapie concomitante recommandée, sauf facteurs de faible risque (petite tumeur < 30 cc et/ou ADN EBV bas). Une chimiothérapie d’induction ou adjuvante peut aussi être proposée.`,
       DOSE,
-      chimioConcomitante
+      CISPLATINE
     );
   }
 
   // Stades II–III hors T3N0
   const capecitabine = stadeT === '3' && stadeN === '1' ? [] : [CAPECITABINE_METRONOMIQUE];
-  if (!cisplatineEligible) {
-    return decide(
-      RT_PLATINE_ALTERNATIF,
-      `${intro} Stade II–III (hors T3N0) chez un patient inéligible au cisplatine.`,
-      DOSE,
-      PLATINE_ALTERNATIF,
-      'Les inductions de référence (GP, TPF) contiennent du cisplatine ; si une induction est envisagée, LF (lobaplatine + 5-FU) est une alternative.',
-      DPYD
-    );
-  }
   if (chimiotherapieInduction) {
     return decide(
       RT_CISPLATINE,

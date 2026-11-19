@@ -288,10 +288,10 @@ export const DECISION_TREE_NODES: TreeNode[] = [
     condition: 'Nasopharynx UCNT T3N0 (stade II TNM9)',
     keyRules: [
       'Radiochimiothérapie concomitante recommandée (RT 70 Gy + cisplatine)',
-      'Tumeur < 30 cc et ADN EBV plasmatique bas ➔ IMRT seule',
+      'Tumeur < 30 cc et ADN EBV plasmatique bas ➔ RT 70 Gy seule',
       'Chimiothérapie d’induction ou adjuvante possible',
     ],
-    prescription: 'RT 70Gy + Cisplatine (ou IMRT seule)',
+    prescription: 'RT 70Gy + Cisplatine (ou RT 70Gy seule)',
     doseBadgeColor: 'bg-indigo-600 text-white font-bold',
     rationale:
       'Recommandations CSCO-ASCO 2026 : sous-groupe exclu des essais d’induction ; la radiochimiothérapie reste proposée sauf facteurs de faible risque (petit volume tumoral, ADN EBV bas).',
@@ -346,13 +346,12 @@ export const DECISION_TREE_NODES: TreeNode[] = [
     badgeColor: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
     condition: 'Nasopharynx UCNT stades IB–III, inéligible au cisplatine',
     keyRules: [
-      'Carboplatine AUC 2 hebdomadaire ou AUC 5 toutes les 3 semaines, lobaplatine 30 mg/m² ou nédaplatine 100 mg/m² toutes les 3 semaines',
-      'Contre-indication à tous les sels de platine ➔ fluoropyrimidine concomitante (capécitabine, 5-FU, tégafur) ou RT seule',
+      'Radiothérapie 70 Gy seule, en 33–35 fractions, quel que soit le stade (IB à III)',
     ],
-    prescription: 'RT 70Gy + Carboplatine / Nédaplatine / Lobaplatine',
+    prescription: 'RT 70Gy seule',
     doseBadgeColor: 'bg-amber-600 text-white font-bold',
     rationale:
-      'Recommandations CSCO-ASCO 2026 : les sels de platine alternatifs ont montré une efficacité non inférieure au cisplatine avec une meilleure tolérance rénale.',
+      'En cas de contre-indication au cisplatine : radiothérapie 70 Gy seule, sans chimiothérapie concomitante.',
     sampleForm: {
       situation: 'tumeur_en_place',
       localisation: 'Nasopharynx',
