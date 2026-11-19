@@ -9,6 +9,7 @@ import {
   StadeN,
   StadeT,
 } from '../types';
+import { evaluateNasopharynxUcnt, isNasopharynxUcnt } from './nasopharynxUcnt';
 
 const NOTE_ESSAI = 'Inclusion dans un essai clinique si disponible';
 
@@ -49,7 +50,7 @@ export function evaluateRcpDecision(data: RcpFormData): RcpResultOutput {
 
   return {
     proposition,
-    justification: [justification],
+    justification: typeof justification === 'string' ? [justification] : justification,
     inclusionEssaiNote: NOTE_ESSAI,
     recommendedLocalisation: data.localisation,
   };
@@ -57,7 +58,7 @@ export function evaluateRcpDecision(data: RcpFormData): RcpResultOutput {
 
 interface Decision {
   proposition: DoseProposition;
-  justification: string;
+  justification: string | string[];
 }
 
 const decide = (proposition: DoseProposition, justification: string): Decision => ({
@@ -68,6 +69,9 @@ const decide = (proposition: DoseProposition, justification: string): Decision =
 // --- TUMEUR EN PLACE ---
 
 function evaluateTumeurEnPlace(data: RcpFormTumeurEnPlace): Decision {
+  // Nasopharynx UCNT : recommandations CSCO-ASCO 2026 (classification TNM9)
+  if (isNasopharynxUcnt(data)) return evaluateNasopharynxUcnt(data);
+
   const {
     localisation,
     stadeT,

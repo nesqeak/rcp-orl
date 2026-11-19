@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Stethoscope } from 'lucide-react';
 import {
+  AdnEbv,
   EffractionCapsulaire,
   HistologieENT,
   LocalisationENT,
@@ -14,8 +15,9 @@ import {
 } from '../types';
 import { getAvailableStadesN, getAvailableStadesT, pickAvailableStade } from '../utils/rcpDecisionEngine';
 import { formatStadeN, formatStadeT } from '../utils/format';
+import { isNasopharynxUcnt, stageTnm9Nasopharynx } from '../utils/nasopharynxUcnt';
 import { HISTOLOGIES, LOCALISATIONS, MARGES_OPTIONS } from '../data/options';
-import { Card, FieldRow, SectionLabel, SegmentedControl, Select, ToggleRow, cx, yesNoOptions } from './ui';
+import { Card, ChoiceGrid, FieldRow, SectionLabel, SegmentedControl, Select, ToggleRow, cx, yesNoOptions } from './ui';
 import { EceChoice, HPV_OPTIONS, NbGanglionsChoice, TailleTumeurChoice } from './clinicalFields';
 
 interface RcpFormProps {
@@ -36,6 +38,9 @@ interface FormState {
   stadeN: StadeN;
   nbGanglions: NbGanglionsHpv;
   chimiotherapieInduction: boolean;
+  // Nasopharynx UCNT en place
+  adnEbv: AdnEbv;
+  volumeTumoralInf30cc: boolean;
   // Adjuvant
   stadePT: StadeT;
   tailleTumeur: TailleTumeurT2;
@@ -58,6 +63,8 @@ const DEFAULT_STATE: FormState = {
   stadeN: '1',
   nbGanglions: '1',
   chimiotherapieInduction: false,
+  adnEbv: 'non_disponible',
+  volumeTumoralInf30cc: false,
   stadePT: '2',
   tailleTumeur: '< 3cm',
   stadePN: '0',
@@ -112,6 +119,10 @@ function toFormData(s: FormState): RcpFormData {
       stadeN: s.stadeN,
       nbGanglions: s.statutHPV && s.stadeN === '1' ? s.nbGanglions : undefined,
       chimiotherapieInduction: s.chimiotherapieInduction,
+      ...(isNasopharynxUcnt(s) && {
+        adnEbv: s.adnEbv,
+        volumeTumoralInf30cc: s.stadeT === '3' && s.stadeN === '0' ? s.volumeTumoralInf30cc : undefined,
+      }),
     };
   }
   return {
@@ -128,6 +139,12 @@ function toFormData(s: FormState): RcpFormData {
     lambeau: s.lambeau,
   };
 }
+
+const ADN_EBV_OPTIONS: { value: AdnEbv; label: string }[] = [
+  { value: 'bas', label: 'Bas' },
+  { value: 'eleve', label: 'Élevé' },
+  { value: 'non_disponible', label: 'Non disponible' },
+];
 
 const SITUATIONS: { value: SituationType; title: string; subtitle: string }[] = [
   { value: 'tumeur_en_place', title: 'Tumeur en place', subtitle: 'Radiothérapie définitive premier trait.' },
@@ -260,6 +277,41 @@ export const RcpForm: React.FC<RcpFormProps> = ({ onSubmit, onCancel, initialDat
           <Select value={state.histologie} options={HISTOLOGIES} onChange={(histologie) => update({ histologie })} />
         </Card>
 
+        {isEnPlace && isNasopharynxUcnt(state) && (
+          <Card className="space-y-3 animate-fade-in">
+            <div className="flex items-center justify-between gap-2">
+              <SectionLabel>Nasopharynx UCNT</SectionLabel>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                Stade TNM9 {stageTnm9Nasopharynx(state.stadeT, state.stadeN)}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                ADN EBV plasmatique (seuil validé localement) :
+              </label>
+              <ChoiceGrid
+                value={state.adnEbv}
+                options={ADN_EBV_OPTIONS}
+                onChange={(adnEbv) => update({ adnEbv })}
+                activeClass="bg-teal-600 text-white border-teal-600 shadow-2xs"
+              />
+            </div>
+            {state.stadeT === '3' && state.stadeN === '0' && (
+              <FieldRow
+                className="pt-2 border-t border-slate-100 dark:border-slate-700"
+                title="Volume tumoral < 30 cc"
+                hint="Tumeur primitive (T3N0)"
+              >
+                <SegmentedControl
+                  value={state.volumeTumoralInf30cc}
+                  options={yesNoOptions('bg-teal-600 text-white')}
+                  onChange={(volumeTumoralInf30cc) => update({ volumeTumoralInf30cc })}
+                />
+              </FieldRow>
+            )}
+          </Card>
+        )}
+
         <Card className="space-y-3">
           <SectionLabel>Éligibilité aux traitements généraux</SectionLabel>
           <FieldRow
@@ -287,7 +339,7 @@ export const RcpForm: React.FC<RcpFormProps> = ({ onSubmit, onCancel, initialDat
             <FieldRow
               className="pt-2 border-t border-slate-100 dark:border-slate-700"
               title="Chimiothérapie d'induction réalisée"
-              hint="Protocole TPF préalable"
+              hint={isNasopharynxUcnt(state) ? 'Protocole GP ou TPF préalable' : 'Protocole TPF préalable'}
             >
               <SegmentedControl
                 value={state.chimiotherapieInduction}

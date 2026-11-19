@@ -12,7 +12,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { EffractionCapsulaire, RcpFormData, RcpResultOutput } from '../types';
-import { formatStage, hpvLabel, situationLabel, yesNo } from '../utils/format';
+import { ADN_EBV_LABELS, formatStage, hpvLabel, situationLabel, yesNo } from '../utils/format';
+import { isNasopharynxUcnt, stageTnm9Nasopharynx } from '../utils/nasopharynxUcnt';
 import { buildRcpReport } from '../utils/report';
 import { cx } from './ui';
 
@@ -74,6 +75,13 @@ function recapItems(formData: RcpFormData): RecapItem[] {
     );
   } else {
     items.push({ label: "Chimio d'induction", value: yesNo(formData.chimiotherapieInduction) });
+    if (isNasopharynxUcnt(formData)) {
+      items.push({ label: 'Stade TNM9', value: stageTnm9Nasopharynx(formData.stadeT, formData.stadeN) });
+      items.push({ label: 'ADN EBV plasmatique', value: ADN_EBV_LABELS[formData.adnEbv ?? 'non_disponible'] });
+      if (formData.volumeTumoralInf30cc !== undefined) {
+        items.push({ label: 'Volume tumoral < 30 cc', value: yesNo(formData.volumeTumoralInf30cc) });
+      }
+    }
   }
   return items;
 }
